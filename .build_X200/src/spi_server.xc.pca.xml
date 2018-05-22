@@ -1,0 +1,586 @@
+<preCompilationAnalysis file="../src/spi_server.xc">
+<fDef name="MotorEnable" global="true" interface="spi_if" noreturn="false" doNotSpecialize="false" numParams="2"/>
+<fDef name="ReadFromAMIS30543" global="true" noreturn="false" doNotSpecialize="false" numParams="3"/>
+<fDef name="SPI_server" global="true" noreturn="false" doNotSpecialize="false" numParams="2"/>
+<fDef name="WriteToAmis30543" global="true" noreturn="false" doNotSpecialize="false" numParams="4"/>
+<fDef name="configure_SPI" global="true" noreturn="false" doNotSpecialize="false" numParams="1"/>
+<fDef name="delay_microseconds" global="true" noreturn="false" doNotSpecialize="true" numParams="1"/>
+<fDef name="delay_milliseconds" global="true" noreturn="false" doNotSpecialize="true" numParams="1"/>
+<fDef name="delay_seconds" global="true" noreturn="false" doNotSpecialize="true" numParams="1"/>
+<fDef name="readError" global="true" interface="spi_if" noreturn="false" doNotSpecialize="false" numParams="2"/>
+<fDef name="readPosistion" global="true" interface="spi_if" noreturn="false" doNotSpecialize="false" numParams="1"/>
+<fDef name="setCurrent" global="true" interface="spi_if" noreturn="false" doNotSpecialize="false" numParams="2"/>
+<fDef name="setEMC" global="true" interface="spi_if" noreturn="false" doNotSpecialize="false" numParams="2"/>
+<fDef name="setMicroStepping" global="true" interface="spi_if" noreturn="false" doNotSpecialize="false" numParams="2"/>
+<fDef name="setPWMfreq" global="true" interface="spi_if" noreturn="false" doNotSpecialize="false" numParams="2"/>
+<fDef name="setPWMjitter" global="true" interface="spi_if" noreturn="false" doNotSpecialize="false" numParams="2"/>
+<fCall name="delay_ticks_longlong" global="true" numArgs="1">
+  <arg num="0">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+</fCall>
+<fCall name="delay_ticks_longlong" global="true" numArgs="1">
+  <arg num="0">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+</fCall>
+<fCall name="delay_ticks_longlong" global="true" numArgs="1">
+  <arg num="0">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+</fCall>
+<fCall name="configure_clock_ref" global="true" numArgs="2">
+  <arg num="0">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+  <arg num="1">
+    <values>
+      <value type="intval"><intval isSigned="true" val="50"/></value>
+    </values>
+  </arg>
+</fCall>
+<fCall name="configure_port_clock_output" global="true" numArgs="2">
+  <arg num="0">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+  <arg num="1">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+</fCall>
+<fCall name="configure_out_port" global="true" numArgs="3">
+  <arg num="0">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+  <arg num="1">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+  <arg num="2">
+    <values>
+      <value type="intval"><intval isSigned="true" val="1"/></value>
+    </values>
+  </arg>
+</fCall>
+<fCall name="configure_in_port" global="true" numArgs="2">
+  <arg num="0">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+  <arg num="1">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+</fCall>
+<fCall name="__builtin_set_port_sdel" global="true" numArgs="2">
+  <arg num="0">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+  <arg num="1">
+    <values>
+      <value type="intval"><intval isSigned="true" val="16399"/></value>
+    </values>
+  </arg>
+</fCall>
+<fCall name="configure_out_port" global="true" numArgs="3">
+  <arg num="0">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+  <arg num="1">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+  <arg num="2">
+    <values>
+      <value type="intval"><intval isSigned="true" val="1"/></value>
+    </values>
+  </arg>
+</fCall>
+<fCall name="__builtin_bitrev" global="true" numArgs="1">
+  <arg num="0">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+</fCall>
+<fCall name="__builtin_start_clock" global="true" numArgs="1">
+  <arg num="0">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+</fCall>
+<fCall name="__builtin_partout" global="true" numArgs="3">
+  <arg num="0">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+  <arg num="1">
+    <values>
+      <value type="intval"><intval isSigned="true" val="15"/></value>
+    </values>
+  </arg>
+  <arg num="2">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+</fCall>
+<fCall name="__builtin_sync" global="true" numArgs="1">
+  <arg num="0">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+</fCall>
+<fCall name="__builtin_stop_clock" global="true" numArgs="1">
+  <arg num="0">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+</fCall>
+<fCall name="wait" global="true" numArgs="1">
+  <arg num="0">
+    <values>
+      <value type="intval"><intval isSigned="true" val="250"/></value>
+    </values>
+  </arg>
+</fCall>
+<fCall name="configure_out_port" global="true" numArgs="3">
+  <arg num="0">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+  <arg num="1">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+  <arg num="2">
+    <values>
+      <value type="intval"><intval isSigned="true" val="0"/></value>
+    </values>
+  </arg>
+</fCall>
+<fCall name="__builtin_clear_buff" global="true" numArgs="1">
+  <arg num="0">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+</fCall>
+<fCall name="__builtin_byterev" global="true" numArgs="1">
+  <arg num="0">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+</fCall>
+<fCall name="__builtin_bitrev" global="true" numArgs="1">
+  <arg num="0">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+</fCall>
+<fCall name="__builtin_start_clock" global="true" numArgs="1">
+  <arg num="0">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+</fCall>
+<fCall name="__builtin_partout" global="true" numArgs="3">
+  <arg num="0">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+  <arg num="1">
+    <values>
+      <value type="intval"><intval isSigned="true" val="15"/></value>
+    </values>
+  </arg>
+  <arg num="2">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+</fCall>
+<fCall name="__builtin_partin" global="true" numArgs="2">
+  <arg num="0">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+  <arg num="1">
+    <values>
+      <value type="intval"><intval isSigned="true" val="15"/></value>
+    </values>
+  </arg>
+</fCall>
+<fCall name="__builtin_stop_clock" global="true" numArgs="1">
+  <arg num="0">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+</fCall>
+<fCall name="__builtin_bitrev" global="true" numArgs="1">
+  <arg num="0">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+</fCall>
+<fCall name="wait" global="true" numArgs="1">
+  <arg num="0">
+    <values>
+      <value type="intval"><intval isSigned="true" val="250"/></value>
+    </values>
+  </arg>
+</fCall>
+<fCall name="configure_SPI" global="true" numArgs="1">
+  <arg num="0">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+</fCall>
+<fCall name="ReadFromAMIS30543" global="true" numArgs="3">
+  <arg num="0">
+    <values>
+      <value type="intval"><intval isSigned="true" val="1"/></value>
+    </values>
+  </arg>
+  <arg num="1">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+  <arg num="2">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+</fCall>
+<fCall name="WriteToAmis30543" global="true" numArgs="4">
+  <arg num="0">
+    <values>
+      <value type="intval"><intval isSigned="true" val="1"/></value>
+    </values>
+  </arg>
+  <arg num="1">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+  <arg num="2">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+  <arg num="3">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+</fCall>
+<fCall name="WriteToAmis30543" global="true" numArgs="4">
+  <arg num="0">
+    <values>
+      <value type="intval"><intval isSigned="true" val="3"/></value>
+    </values>
+  </arg>
+  <arg num="1">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+  <arg num="2">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+  <arg num="3">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+</fCall>
+<fCall name="WriteToAmis30543" global="true" numArgs="4">
+  <arg num="0">
+    <values>
+      <value type="intval"><intval isSigned="true" val="3"/></value>
+    </values>
+  </arg>
+  <arg num="1">
+    <values>
+      <value type="intval"><intval isSigned="true" val="0"/></value>
+    </values>
+  </arg>
+  <arg num="2">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+  <arg num="3">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+</fCall>
+<fCall name="ReadFromAMIS30543" global="true" numArgs="3">
+  <arg num="0">
+    <values>
+      <value type="intval"><intval isSigned="true" val="1"/></value>
+    </values>
+  </arg>
+  <arg num="1">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+  <arg num="2">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+</fCall>
+<fCall name="WriteToAmis30543" global="true" numArgs="4">
+  <arg num="0">
+    <values>
+      <value type="intval"><intval isSigned="true" val="1"/></value>
+    </values>
+  </arg>
+  <arg num="1">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+  <arg num="2">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+  <arg num="3">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+</fCall>
+<fCall name="WriteToAmis30543" global="true" numArgs="4">
+  <arg num="0">
+    <values>
+      <value type="intval"><intval isSigned="true" val="9"/></value>
+    </values>
+  </arg>
+  <arg num="1">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+  <arg num="2">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+  <arg num="3">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+</fCall>
+<fCall name="ReadFromAMIS30543" global="true" numArgs="3">
+  <arg num="0">
+    <values>
+      <value type="intval"><intval isSigned="true" val="2"/></value>
+    </values>
+  </arg>
+  <arg num="1">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+  <arg num="2">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+</fCall>
+<fCall name="WriteToAmis30543" global="true" numArgs="4">
+  <arg num="0">
+    <values>
+      <value type="intval"><intval isSigned="true" val="2"/></value>
+    </values>
+  </arg>
+  <arg num="1">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+  <arg num="2">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+  <arg num="3">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+</fCall>
+<fCall name="ReadFromAMIS30543" global="true" numArgs="3">
+  <arg num="0">
+    <values>
+      <value type="intval"><intval isSigned="true" val="2"/></value>
+    </values>
+  </arg>
+  <arg num="1">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+  <arg num="2">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+</fCall>
+<fCall name="WriteToAmis30543" global="true" numArgs="4">
+  <arg num="0">
+    <values>
+      <value type="intval"><intval isSigned="true" val="2"/></value>
+    </values>
+  </arg>
+  <arg num="1">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+  <arg num="2">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+  <arg num="3">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+</fCall>
+<fCall name="ReadFromAMIS30543" global="true" numArgs="3">
+  <arg num="0">
+    <values>
+      <value type="intval"><intval isSigned="true" val="2"/></value>
+    </values>
+  </arg>
+  <arg num="1">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+  <arg num="2">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+</fCall>
+<fCall name="WriteToAmis30543" global="true" numArgs="4">
+  <arg num="0">
+    <values>
+      <value type="intval"><intval isSigned="true" val="2"/></value>
+    </values>
+  </arg>
+  <arg num="1">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+  <arg num="2">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+  <arg num="3">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+</fCall>
+<fCall name="ReadFromAMIS30543" global="true" numArgs="3">
+  <arg num="0">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+  <arg num="1">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+  <arg num="2">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+</fCall>
+<fCall name="ReadFromAMIS30543" global="true" numArgs="3">
+  <arg num="0">
+    <values>
+      <value type="intval"><intval isSigned="true" val="10"/></value>
+    </values>
+  </arg>
+  <arg num="1">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+  <arg num="2">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+</fCall>
+<fCall name="ReadFromAMIS30543" global="true" numArgs="3">
+  <arg num="0">
+    <values>
+      <value type="intval"><intval isSigned="true" val="7"/></value>
+    </values>
+  </arg>
+  <arg num="1">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+  <arg num="2">
+    <values>
+      <value type="unknown"/>
+    </values>
+  </arg>
+</fCall>
+</preCompilationAnalysis>
