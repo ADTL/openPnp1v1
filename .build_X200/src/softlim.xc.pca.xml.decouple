@@ -1,3 +1,0 @@
-<preCompilationAnalysis file="../src/softlim.xc">
-<fDef name="softlim" global="true" noreturn="false" doNotSpecialize="false" numParams="4"/>
-</preCompilationAnalysis>
