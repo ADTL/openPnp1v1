@@ -109,7 +109,6 @@ void supervisor(client spi_if spi, client interface error_if error_data , in por
 int move_lim(out port p_step , in port p_lim, int cont, int p_val ,unsigned total_steps  , unsigned minPulseTime , unsigned acc){
     if(minPulseTime< MIN_PUSLE_TIME)
         minPulseTime=MIN_PUSLE_TIME;
-    acc = acc<<24;
     unsigned t=0 , dt , steps=0 , lim;
     unsigned half_way = total_steps;
     total_steps <<=1;
@@ -154,7 +153,6 @@ int move_lim(out port p_step , in port p_lim, int cont, int p_val ,unsigned tota
 
 
 unsigned moveStepper(out port p_step , unsigned total_steps  , unsigned minPulseTime , unsigned acc){
-    acc = acc<<24;
     unsigned t=0 , dt , steps=0;
     unsigned half_way = total_steps;
     total_steps <<=1;
@@ -174,7 +172,7 @@ unsigned moveStepper(out port p_step , unsigned total_steps  , unsigned minPulse
             max_speed_steps++;
         }
     }
-    while(steps <= total_steps ){
+    while(steps < total_steps ){
         p_val = ~p_val;
         p_step @ t <: p_val;
         steps++;
@@ -200,7 +198,7 @@ void stepperX_server(streaming chanend c , stepper_t &p){
     int steps , pos;
     int homeDir=1;
     const int p_val=1;
-    const int acc_home=75;
+    const int acc_home=75<<24;
     int acc;
     while(1){
           c :> cmd;
@@ -244,7 +242,7 @@ void stepperY_server(streaming chanend c , stepper_t &p){
     unsigned t_min , cmd;
     int steps , pos;
     const int p_val=3;
-    const int acc_home=50;
+    const int acc_home=50<<24;
     int acc;
     const int fineAdjustRange = (4*XYticks_per_mm);
     while(1){
@@ -260,7 +258,7 @@ void stepperY_server(streaming chanend c , stepper_t &p){
               move_lim(p.step , p.endstop , 2 , 1 , fineAdjustRange , t_min , acc_home>>2);
               move_lim(p.step , p.endstop , 1 , 2 , fineAdjustRange , t_min , acc_home>>2);
 
-              moveStepper(p.step , XY_STEPPING , 10000 , 50);
+              moveStepper(p.step , XY_STEPPING , 10000 , acc_home);
               pos=0;
               soutct(c , 0);
               break;
@@ -297,6 +295,8 @@ void stepperZ_server(streaming chanend c , client spi_if spi , stepper_t &p){
     const int p_val=1;
     int acc;
     int hicurrent=0;
+    unsigned offset_steps=0;
+    unsigned offset_dir;
     while(1){
         c :> cmd;
         switch(cmd){
@@ -305,13 +305,13 @@ void stepperZ_server(streaming chanend c , client spi_if spi , stepper_t &p){
                 spi.setCurrent(CURRENT_Z , spiZ);
             p.endstop :> endstop;
             p.dir <: !endstop;
-            move_lim(p.step , p.endstop , endstop ,p_val, HOME_ZTICKS , 2500 , 75);
+            move_lim(p.step , p.endstop , endstop ,p_val, HOME_ZTICKS , 2500 , 75<<24);
 
             p.dir <: endstop;
-            move_lim(p.step , p.endstop , !endstop , p_val, Zticks_per_mm , 25000 , 75);
+            move_lim(p.step , p.endstop , !endstop , p_val, Zticks_per_mm , 25000 , 75<<24);
 
-            p.dir <: 1;
-            moveStepper(p.step , (Z_OFFSET_UM*Zticks_per_mm)/1000 , 2500 , 50);
+            p.dir <: offset_dir;
+            moveStepper(p.step , offset_steps , 2500 , 50<<24);
             if(hicurrent == 0)
                 spi.setCurrent(CURRENT_Z>>1 , spiZ);
             soutct(c , 0);
@@ -332,6 +332,17 @@ void stepperZ_server(streaming chanend c , client spi_if spi , stepper_t &p){
             }else
                 moveStepper(p.step , steps  , t_min , acc);
             soutct(c , 0);
+            break;
+        case OFFSET:
+            int offset;
+            c:> offset;
+            if(offset<0){
+                offset_dir=0;
+                offset_steps = -offset;
+            }else{
+                offset_dir=1;
+                offset_steps = offset;
+            }
             break;
         case HICURRENT:
             c:> hicurrent;
@@ -388,11 +399,11 @@ void stepperC_server(streaming chanend c, client spi_if spi , stepper_t &p_C0 , 
         }
         if(head){
             spi.setCurrent(CURRENT_C , spiC0);
-            moveStepper(p_C0.step , steps  , t_min , 200);
+            moveStepper(p_C0.step , steps  , t_min , 200<<24);
             spi.setCurrent(CURRENT_C>>1 , spiC0);
         }else{
             spi.setCurrent(CURRENT_C , spiC1);
-            moveStepper(p_C1.step , steps  , t_min , 200);
+            moveStepper(p_C1.step , steps  , t_min , 200<<24);
             spi.setCurrent(CURRENT_C>>1 , spiC1);
         }
         soutct(c , 0);
@@ -415,19 +426,24 @@ int checkpos(int pos){
         return 0;
 }
 
-void setAcc(char data[] , float &acc){
+int setAcc(char data[] , float &acc , float &offset){
     int pos = safestrchr(data, 'A');
+    int offset_pos = safestrchr(data, 'O');
+    const float scale = 1<<24;
     if(checkpos(pos>0)){
-        acc = atoff(&data[pos+1]); // feedrate mm/min
-        if(acc > 255)
-            acc = 255;
+        acc = atoff(&data[pos+1])*scale; // feedrate mm/min
+        if(acc > 0xFFFFFFFF)
+            acc = 0xFFFFFFFF;
         else if(acc <1)
             acc = 1;
     }
+    if(offset_pos>0){
+        offset=atoff(&data[offset_pos+1]);
+        return 1;
+    }
+    else
+        return 0;
 }
-
-
-
 
 
 
@@ -438,22 +454,24 @@ void sendError(client interface usb_cdc_interface cdc , char sign , char axes , 
 }
 
 
-char* unsafe stepper2string(int stepper){
-    unsafe{    switch(stepper){
+void stepper2string(int stepper , char str[8]){
+    switch(stepper){
     case spiZ:
-        return "Z";
+        safestrcpy(str , "Z" );
+        return;
         break;
     case spiC0:
-        return "C0";
+        safestrcpy(str , "C0");
+        return;
         break;
     case spiC1:
-        return "C1";
+        safestrcpy(str , "C1");
+        return;
         break;
     default:
         break;
     }
-    return "UNKNOWN";
-    }
+    safestrcpy(str , "UNKNOWN");
 }
 
 void setEna(int val ,int &ena ,  server interface error_if error , out port p){
@@ -462,10 +480,10 @@ void setEna(int val ,int &ena ,  server interface error_if error , out port p){
     error.notification();
 }
 
-void g_code(client interface usb_cdc_interface cdc, client spi_if spi , client i2c_master_if i2c  , client pwm_if pwm , streaming chanend c_X , streaming chanend c_Y  , streaming chanend c_Z , streaming chanend c_C , server interface error_if error ,out port p_ena){
-float AccMaxX=10;
-float AccMaxY=10;
-float AccMaxZ=50;
+void g_code(client interface usb_cdc_interface cdc, client spi_if spi , client i2c_master_if i2c  , client pwm_if pwm , streaming chanend c_X , streaming chanend c_Y  , streaming chanend c_Z , streaming chanend c_C , server interface error_if error ,out port p_ena , clock clk){
+float AccMaxX=10 * (1<<24);
+float AccMaxY=10 * (1<<24);
+float AccMaxZ=50 * (1<<24);
 unsigned char data[512]={0};
 unsigned length;
 char stepper_moving[5]={0};
@@ -494,15 +512,18 @@ while(1){
                         status = ena;
                     break;
                 case error.ChargePumpFailure(int stepper):
-                    unsigned len = sprintf(data , "%s Charge pump failure %s %s!\n"  , error_string , s_driver , stepper2string(stepper) );
+                    char str[8]; stepper2string(stepper , str);
+                    unsigned len = sprintf(data , "%s Charge pump failure %s %s!\n"  , error_string , s_driver , str );
                     cdc.write(data , len);
                     break;
                 case error.ThermalWarning(int stepper):
-                    unsigned len = sprintf(data , "%s Thermal Warning %s %s \n"  , report_string , s_driver , stepper2string(stepper) );
+                    char str[8]; stepper2string(stepper , str);
+                    unsigned len = sprintf(data , "%s Thermal Warning %s %s \n"  , report_string , s_driver , str );
                     cdc.write(data , len);
                    break;
                 case error.ThermalShutdown(int stepper):
-                    unsigned len = sprintf(data , "%s Thermal Shutdown  %s %s\n"  , error_string, s_driver , stepper2string(stepper) );
+                    char str[8]; stepper2string(stepper , str);
+                    unsigned len = sprintf(data , "%s Thermal Shutdown  %s %s\n"  , error_string, s_driver , str );
                     cdc.write(data , len);
                     break;
                 case error.OverCurrent(int stepper , enum OCaxes axes , enum OCpos pos , enum OCpolarity polarity):
@@ -538,14 +559,15 @@ while(1){
                     default:
                         break;
                     }
-
-                    unsigned len = sprintf(data , "%s Over-current %s %s %s %c%c\n"  , error_string, s_driver , stepper2string(stepper) , polarity_c, pos_c );
+                    char str[8]; stepper2string(stepper , str);
+                    unsigned len = sprintf(data , "%s Over-current %s %s %s %c%c\n"  , error_string, s_driver , str , polarity_c, pos_c );
                     cdc.write(data , len);
                     break;
 
                     case error.OpenCoil(int stepper , enum OCaxes axes):
+                    char str[8]; stepper2string(stepper , str);
                     char polarity_c;
-                    unsigned len = sprintf(data , "%s Over-current %s %s %s\n"  , error_string, s_driver , stepper2string(stepper));
+                    unsigned len = sprintf(data , "%s Over-current %s %s %s\n"  , error_string, s_driver , str);
                     cdc.write(data , len);
 
                      break;
@@ -593,23 +615,24 @@ while(1){
                         {dx , softlim_v[stepperX]} =  softlim(new_x , xlim , 0  , x);
                         //default
                         accX =  AccMaxX;
-                        t_X = round(t_minXY);
-                        stepsX = round(dx*XYticks_per_mm);
+                        //printuint(accX);
+                        t_X = roundf(t_minXY);
+                        stepsX = roundf(dx*XYticks_per_mm);
                     }
 
                     if(checkpos(ypos)){
                         {dy , softlim_v[stepperY]} =  softlim(new_y , ylim  , 0 , y);
                          //default
                         accY =  AccMaxY;
-                        t_Y = round(t_minXY);
-                        stepsY = round(dy*XYticks_per_mm);
+                        t_Y = roundf(t_minXY);
+                        stepsY = roundf(dy*XYticks_per_mm);
                     }
 
                     if(checkpos(zpos)){
                         {dz , softlim_v[stepperZ]} =  softlim(new_z , zlim , -zlim , z);
-                        stepsZ = round(dz*Zticks_per_mm);
-                        t_Z = round(t_minZ);
-                        accZ = round(AccMaxZ);
+                        stepsZ = roundf(dz*Zticks_per_mm);
+                        t_Z = roundf(t_minZ);
+                        accZ = roundf(AccMaxZ);
                     }
 
 
@@ -617,23 +640,24 @@ while(1){
                         float hyp = sqrt(dx*dx + dy*dy + dz*dz);
 
                         if(stepsX!=0){ //avoid div with zero
-                            t_X = round(t_minXY*hyp/fabsf(dx)); // decrease velocity -> increase time
+                            t_X = roundf(t_minXY*hyp/fabsf(dx)); // decrease velocity -> increase time
                             if(t_X > UINT16_MAX)
                                 t_X = UINT16_MAX;
-                            accX =  AccMaxY*fabsf(dx/dy);
+                            accX =  AccMaxY*fabsf(dx/dy); // dx/H*H/dy = dx/dy
                         }
 
                         if(stepsY!=0){
-                            t_Y = round(t_minXY*hyp/fabsf(dy));
+                            t_Y = roundf(t_minXY*hyp/fabsf(dy));
                             if(t_Y > UINT16_MAX)
-                                t_Y = UINT16_MAX;
+                                t_Y = UINT16_MAX;  // accY = dy/H*H/dy = 1
+
                         }
 
                         if(stepsZ!=0){
-                            t_Z = round(t_minZ*hyp/fabsf(dz));
+                            t_Z = roundf(t_minZ*hyp/fabsf(dz));
                             if(t_Z > UINT16_MAX)
                                 t_Z = UINT16_MAX;
-                            accZ =  AccMaxY*fabsf(dz/dy);
+                            accZ =  AccMaxY*fabsf(dz/dy);   // dz/H*H/dy = dz/dy
                         }
                         if(accX >  AccMaxX){
                             float dec = AccMaxX/accX;
@@ -643,9 +667,9 @@ while(1){
                         }
                     }
 
-                    int aX = round(accX);
-                    int aY = round(accY);
-                    int aZ = round(accZ);
+                    int aX = roundf(accX);
+                    int aY = roundf(accY);
+                    int aZ = roundf(accZ);
 
                     //send move command
 
@@ -658,7 +682,7 @@ while(1){
                     }
 
                     if((stepsY!=0)){
-                        int acc = round(accY);
+                        int acc = roundf(accY);
                         //printint(steps); printchar(','); printint(t_min);
                         c_Y <: MOVE;
                         c_Y <: stepsY;//+ticks_per_mm_s32;
@@ -680,13 +704,14 @@ while(1){
                     if(checkpos(epos)){
                         float deg = atof(&data[epos+1]) - c[Cstepper];
                         c[Cstepper] +=deg;
-                        int steps = round( deg * Cticks_per_deg);
-                        //unsigned t = round((5E7/Cticks_per_deg*60) / f); // ticks per second
+                        int steps = roundf( deg * Cticks_per_deg);
+                        //unsigned t = roundf((5E7/Cticks_per_deg*60) / f); // ticks per second
                         c_C <: Cstepper; //stepper
                         c_C <: steps;
                         c_C <: 1000;
                         stepper_moving[stepperC0 + Cstepper]++;
                     }
+                    start_clock(clk);
                     cdc.write(ok_string, ok_len);
                     break;
                 case 4: //wait ms
@@ -706,13 +731,16 @@ while(1){
                     cdc.write(ok_string, ok_len);
                     break;
                 case 28: // home all axes
-                    c_Z<: HOME; sinct(c_Z);
+                    c_Z<: HOME;
+                    start_clock(clk);
+                    sinct(c_Z);
                     c_Y<: HOME;
                     wait(7e7); //Delay X home with 0.7 s
                     c_X<: HOME;
                     x=0; y=0; z=0;
                     memset(softlim_v , 0 , sizeof(softlim_v)); // reset all softlim errors
                     sinct(c_X); sinct(c_Y);
+                    stop_clock(clk);
                     cdc.write(ok_string, ok_len);
                     break;
                 case 90: //sSet absolute positioning mode;
@@ -762,7 +790,7 @@ while(1){
                         sinct(c_C);
                         stepper_moving[stepperC1]=0;
                     }
-
+                    stop_clock(clk);
                     cdc.write(ok_string, ok_len);
 
                     break;
@@ -855,15 +883,22 @@ while(1){
                     cdc.write(ok_string, ok_len);
                     break;
                 case 813: // set max accX
-                    setAcc(data , AccMaxX);
+                    float _;
+                    setAcc(data , AccMaxX , _);
                     cdc.write(ok_string, ok_len);
                     break;
                 case 814: // set max accY
-                    setAcc(data , AccMaxY);
+                    float _;
+                    setAcc(data , AccMaxY , _);
                     cdc.write(ok_string, ok_len);
                     break;
                 case 815: // set max accZ
-                    setAcc(data , AccMaxZ);
+                    float offset;
+                    if(setAcc(data , AccMaxZ , offset)){
+                     unsigned steps = roundf((offset*Zticks_per_mm));
+                     c_Z <: OFFSET;
+                     c_Z <: steps;
+                    }
                     cdc.write(ok_string, ok_len);
                     break;
                 default:
@@ -898,11 +933,10 @@ void planner(client interface usb_cdc_interface cdc_data ,
     configure_out_port_no_ready(p.Z.step , p.clk , 0);
     configure_out_port_no_ready(p.C0.step , p.clk , 0);
     configure_out_port_no_ready(p.C1.step , p.clk , 0);
-    start_clock(p.clk);
 
     par{
 
-        g_code(cdc_data , spi_data[3] , i2c[0]  , pwm , c_X , c_Y ,c_Z , c_C , error , p.Enable);
+        g_code(cdc_data , spi_data[3] , i2c[0]  , pwm , c_X , c_Y ,c_Z , c_C , error , p.Enable , p.clk);
         supervisor(spi_data[0] , error , p.error);
         stepperX_server(c_X , p.X);
         stepperY_server(c_Y , p.Y);

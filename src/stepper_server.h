@@ -44,7 +44,7 @@
 #define zlim 33.5 //Soft lim
 #define Z_OFFSET_UM 3500 // DISTANCE FROM optical detection to mid
 
-enum CMD{HOME , MOVE , SIM , HICURRENT};
+enum CMD{HOME , MOVE , OFFSET ,SIM , HICURRENT};
 enum OCaxes{X,Y};
 enum OCpos{OCtop , OCbottom};
 enum OCpolarity{OCpos , OCneg};
