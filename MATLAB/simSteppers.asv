@@ -5,7 +5,7 @@ scale = double(int32(inf)+1)/sqrt(LEN);
 acc=707; % kvadrat
 ticks_mm=12800/90;
 steps1 = round(ticks_mm * 200)
-steps2 = round(ticks_mm *150) %Must be less than steps1 NOT SORTED
+steps2 = round(ticks_mm *40) %Must be less than steps1 NOT SORTED
 f = steps1/steps2;
 period = port_clock/2e5;
 
@@ -17,13 +17,12 @@ period = period*f;
 acc=acc/f;
 
 if(acc > 500)
-    scaledown = acc/500
-end
+    
 
 [acc_steps , v_steps , period] = calcMovement( steps2, period , LEN , acc , port_clock);
 [ta2est, tv2est] = calcTtot(scale , acc, acc_steps, v_steps , period);
  
-%corr = (ta1est+ tv1est)/(ta2est + tv2est)
+corr = (ta1est+ tv1est)/(ta2est + tv2est)
 
 % disp(1/corr);
 % acc = acc / corr^2;
