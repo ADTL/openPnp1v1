@@ -30,7 +30,7 @@ int main() {
         on USB_TILE: CdcEndpointsHandler(c_ep_in[1], c_ep_out[1], c_ep_in[2], cdc_data);
         on tile[SPI_TILE]: SPI_server(spi_data, p_SPI);
         on tile[PWM_TILE]: pwm_server(pwm , pwm_r);
-        on tile[STEPPER_TILE]: planner(cdc_data , pwm , spi_data  , stepper_r , p_SCL , p_SDA);
+        on tile[STEPPER_TILE]: stepperthreads(cdc_data , pwm , spi_data  , stepper_r , p_SCL , p_SDA);
         }
 return 0;
 }

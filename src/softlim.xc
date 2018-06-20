@@ -7,7 +7,8 @@
 
 #include <stdlib.h>
 
-{float , char} softlim(float new_x , const float max , const float min , float &x){
+{float , char} softlim(char* data , const float max , const float min , float &x){
+    float new_x = atoff(data);
     float dx = new_x-x;
     if(x + dx > max){
         dx = max - x;

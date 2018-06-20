@@ -9,6 +9,8 @@
 #ifndef SPI_H_
 #define SPI_H_
 
+#include "xs1.h"
+
 enum spi_slave{spiZ ,spiADC ,spiC1 , spiC0 };
 enum stepper{stepperX , stepperY , stepperZ , stepperC0 , stepperC1};
 enum EMC{VeryFast , Fast , Slow , VerySlow};

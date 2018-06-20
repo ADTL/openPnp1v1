@@ -7,6 +7,7 @@
 
 #include <xs1.h>
 #include "stepper_server.h"
+#define GAIN 1
 
 int simStepper(unsigned total_steps  , unsigned minPulseTime , unsigned acc){
     acc = acc<<24;

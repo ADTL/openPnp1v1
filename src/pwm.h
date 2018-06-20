@@ -5,7 +5,9 @@
  *      Author: micke
  */
 
+#include "xs1.h"
 #include "i2c.h"
+
 #ifndef PWM_H_
 #define PWM_H_
 

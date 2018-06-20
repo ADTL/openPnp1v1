@@ -14,31 +14,31 @@ extern unsigned sqrt_tbl(unsigned x , unsigned &a , unsigned &b);
 //#define PRINT
 void calcFixedPoint(struct move_t &s){
     const FLOAT_T numerator = (FLOAT_T)UINT32_MAX+1;
-    int shift;
+    int shift[1];
     //FLOAT_T mantissa = 2*FREXP(SQRT(s.acc) , &shift);
     FLOAT_T mantissa;
     if(s.sqrt_acc>1e-9){
-        mantissa = 2*FREXP(s.sqrt_acc , &shift);
-        shift-=1;
+        mantissa = 2*FREXP(s.sqrt_acc , shift);
+        shift[0]-=1;
     }else{
         mantissa = 1;
-        shift=0;
+        shift[0]=0;
     }
 
 
-    s.m.acc_exp = shift;
+    s.m.acc_exp = shift[0];
     s.m.acc_inv=ROUND(numerator/mantissa);
     FLOAT_T f;
     if(shift < 0)
-        f = numerator/(1<<-shift);
+        f = numerator/(1<<-shift[0]);
     else
-        f = numerator*(1<<shift);
+        f = numerator*(1<<shift[0]);
 
     s.m.period = ROUND(s.time.period * f);
     s.m.t_tot = ROUND(s.time.total *f);
     s.m.dir = s.steps <0 ? 1 : 0 ;
 #ifdef PRINT
-    printf("acc_inv=%x | f=%f, tot=%f , %ull , shift=%d\n", s.m.acc_inv ,f , s.time.total , s.m.t_tot, shift);
+    printf("Acc=%g , Sqrt_acc=%g , mantissa=%f , shift =%d f=%g\n%Ttot_uint64=%llu\n", s.acc , s.sqrt_acc , mantissa , shift[0], f , s.m.t_tot);
 #endif
 }
 
@@ -75,8 +75,9 @@ void calcTimes(struct move_t &s , int phase , double &scale){
 }
 
 void calcSquares(struct move_t &s){
-    s.sqrt_maxAcc = SQRT(s.maxAcc);
-    s.sqrt_acc = SQRT(s.acc);
+    s.sqrt_maxAcc =  SQRT(s.maxAcc);
+    s.sqrt_acc =     SQRT(s.acc);
+    s.sqrt_HomeAcc = SQRT(s.HomeAcc);
 }
 
 void calcAccSteps(struct move_t &s , double &scale){
@@ -87,6 +88,23 @@ void calcAccSteps(struct move_t &s , double &scale){
     s.m.acc_steps = acc_steps > max_steps ? max_steps : acc_steps;
     s.m.v_steps = abs_steps - 2*s.m.acc_steps;
 }
+
+void calcHomeMovement(struct moveGroup_t &s){
+    s.XYZ[X].steps  = XLIM*XYticks_per_mm;
+    s.XYZ[Y].steps  = YLIM*XYticks_per_mm;
+    s.XYZ[Z].steps  = ZLIM*Zticks_per_mm;
+
+    for(int i=0; i<3; i++){
+        s.XYZ[i].m.cmd = HOME;
+        s.XYZ[i].time.period = s.XYZ[i].time.HomeMinPeriod;
+        s.XYZ[i].acc = s.XYZ[i].HomeAcc;
+        s.XYZ[i].sqrt_acc = s.XYZ[i].sqrt_HomeAcc;
+        calcAccSteps(s.XYZ[i] , s.scale);
+        calcTimes(s.XYZ[i] , 0 , s.scale);
+        calcFixedPoint(s.XYZ[i]);
+    }
+}
+
 
 void calcAllMovement(struct moveGroup_t &s){
 #ifdef PRINT
@@ -123,9 +141,11 @@ void calcAllMovement(struct moveGroup_t &s){
             for( int a=1; a<3; a++){
                 int i = (axis+a)%3;
                 if(s.XYZ[i].steps !=0){
-                    step_scaling[i] = (FLOAT_T )s.XYZ[axis].steps / (FLOAT_T )s.XYZ[i].steps;
+                    step_scaling[i] = (FLOAT_T )abs(s.XYZ[axis].steps) / abs((FLOAT_T )s.XYZ[i].steps);
+#ifdef PRINT
                     printf("stepscaling=%g\n",step_scaling[i]);
-                     //Check for fastest possible acceleration over all axis
+#endif
+                    //Check for fastest possible acceleration over all axis
                     FLOAT_T scale_acc = s.XYZ[i].maxAcc /(s.XYZ[axis].acc/step_scaling[i]);
                     //Check for minimum period time over all axis
                     FLOAT_T scale_period = s.XYZ[i].time.minPeriod/(s.XYZ[axis].time.period*step_scaling[i]);
@@ -137,8 +157,9 @@ void calcAllMovement(struct moveGroup_t &s){
                     }
                 }
             }
+#ifdef PRINT
             printf("acc_down = %g period_up = %g\n" , scaledown_acc , scaleup_period );
-
+#endif
                 if(scaledown_acc < 1){
                     //Redo acceleration for axis, meaning slowest axis must go slower
                     s.XYZ[axis].acc *=scaledown_acc;
@@ -167,16 +188,16 @@ void calcAllMovement(struct moveGroup_t &s){
                    }
 
 #ifdef PRINT
-                printf("axis = %d, new acc = %g\n" , axis1 , s.XYZ[axis1].sqrt_acc);
-#endif
-#ifdef PRINT
-                printf("t_tot = %g" , t_tot);
+                int axis1=(axis+1)%3;
+                   printf("axis = %d, new acc = %g\n" , axis , s.XYZ[axis1].sqrt_acc);
 #endif
                // Correct for the rounding errors due to discrete steps based on total time by stretching acceleration and then calculate the optimal period
                 for( int a=1; a<3; a++){
                     int i = (axis+a)%3;
                 FLOAT_T correction = s.XYZ[axis].time.total /s.XYZ[i].time.total;
+#ifdef PRINT
                 printf("Correction = %g \n" , correction-1);
+#endif
                 s.XYZ[i].time.period *=correction;
                 s.XYZ[i].sqrt_acc /= correction;
                 calcTimes(s.XYZ[i] , 0 , s.scale);
@@ -186,7 +207,9 @@ void calcAllMovement(struct moveGroup_t &s){
 
     //Translate to fixed point
     for(int i=0; i<3; i++){
-        calcFixedPoint(s.XYZ[i]);
+        if(s.XYZ[i].steps !=0)
+            calcFixedPoint(s.XYZ[i]);
+        s.XYZ[i].m.cmd = MOVE;
 #ifdef PRINT
         printf("axis=%d , %u*2^%d , per=%u , t_tot_fixed=%llu \n" ,i ,s.XYZ[i].m.acc_inv , s.XYZ[i].m.acc_exp , (s.XYZ[i].m.period>>32) , s.XYZ[i].m.t_tot);
 #endif
