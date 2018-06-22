@@ -35,6 +35,7 @@ void calcFixedPoint(struct move_t &s){
         f = numerator*(1<<shift[0]);
 
     s.m.period = ROUND(s.time.period * f);
+    printullongln(s.m.period);
     s.m.t_tot = ROUND(s.time.total *f);
     s.m.dir = s.steps <0 ? 1 : 0 ;
 #ifdef PRINT
@@ -89,14 +90,40 @@ void calcAccSteps(struct move_t &s , double &scale){
     s.m.v_steps = abs_steps - 2*s.m.acc_steps;
 }
 
-void calcHomeMovement(struct moveGroup_t &s){
-    s.XYZ[X].steps  = XLIM*XYticks_per_mm;
-    s.XYZ[Y].steps  = YLIM*XYticks_per_mm;
-    s.XYZ[Z].steps  = ZLIM*Zticks_per_mm;
+FLOAT_T calcFeedrate2Period(struct move_t &s , float feedrate){
+    if(feedrate<=0){
+        printf("\n!!!Error in calcFeedrate2Period | feedrate=%g \n\n" , feedrate);
+        feedrate=1000;
+    }
+  //  printf("fin=%g ", feedrate);
+    feedrate /=secPerMin; // = [mm/s]
+    feedrate *=s.StepsPerMm; // [mm/s] * [steps/mm] = steps/s
+    FLOAT_T period = 1000*PORT_CLK_FREQ_kHz/feedrate; // k*clockcyles/ms / (steps/s) = clockcyles/step
+    if(period < s.time.minPeriod)
+        period= s.time.minPeriod;
+  //  printf("%g, per=%g\n" , feedrate , (FLOAT_T)period);
+    return period;
 
-    for(int i=0; i<3; i++){
-        s.XYZ[i].m.cmd = HOME;
-        s.XYZ[i].time.period = s.XYZ[i].time.HomeMinPeriod;
+}
+
+void calcHomeMovement(struct moveGroup_t &s , int phase , enum OCaxes axes){
+
+    int start=X;
+    int stop=Z;
+    if(axes<=Z){
+        start=axes;
+        stop=axes;
+        for(int i=X; i<=Z; i++)
+            s.XYZ[i].steps=0;
+    }
+
+    for(int i=start; i<=stop; i++){
+        s.XYZ[i].steps = s.XYZ[i].softlim_max*s.XYZ[i].StepsPerMm;
+        if( phase)
+            s.XYZ[i].time.period = calcFeedrate2Period(s.XYZ[i] , s.XYZ[i].SlowHomeFeedrate);
+        else
+            s.XYZ[i].time.period = calcFeedrate2Period(s.XYZ[i] , s.XYZ[i].HomeFeedrate);
+        s.XYZ[i].time.period = calcFeedrate2Period(s.XYZ[i] , s.XYZ[i].HomeFeedrate);
         s.XYZ[i].acc = s.XYZ[i].HomeAcc;
         s.XYZ[i].sqrt_acc = s.XYZ[i].sqrt_HomeAcc;
         calcAccSteps(s.XYZ[i] , s.scale);
@@ -105,22 +132,27 @@ void calcHomeMovement(struct moveGroup_t &s){
     }
 }
 
-
+//#define PRINTcalcAllMovement
 void calcAllMovement(struct moveGroup_t &s){
 #ifdef PRINT
     printf("scale = %f\n" , s.scale);
 #endif
 
-
     //Update struct and then calculate the minimum travel time for each axis independently
     for(int i=0; i<3; i++){
         if(s.XYZ[i].steps !=0){
-            s.XYZ[i].time.period = s.XYZ[i].time.minPeriod;
+            s.XYZ[i].time.period = calcFeedrate2Period(s.XYZ[i] , s.feedrate);
             s.XYZ[i].acc = s.XYZ[i].maxAcc;
             s.XYZ[i].sqrt_acc = s.XYZ[i].sqrt_maxAcc;
             calcAccSteps(s.XYZ[i] , s.scale);
             calcTimes(s.XYZ[i] , 0 , s.scale);
+#ifdef PRINTcalcAllMovement
+            printf("Total time axis %d=%g period=%g\n" , i ,s.XYZ[i].time.total ,s.XYZ[i].time.period );
+#endif
         }
+        else
+            s.XYZ[i].time.total=0;
+
     }
     //Number of moving axis
     int moving_axis = (s.XYZ[X].steps != 0 )+ (s.XYZ[Y].steps != 0 ) + (s.XYZ[Z].steps != 0 );
@@ -141,9 +173,9 @@ void calcAllMovement(struct moveGroup_t &s){
             for( int a=1; a<3; a++){
                 int i = (axis+a)%3;
                 if(s.XYZ[i].steps !=0){
-                    step_scaling[i] = (FLOAT_T )abs(s.XYZ[axis].steps) / abs((FLOAT_T )s.XYZ[i].steps);
-#ifdef PRINT
-                    printf("stepscaling=%g\n",step_scaling[i]);
+                    step_scaling[i] = (FLOAT_T )abs(s.XYZ[axis].steps) / (FLOAT_T) abs(s.XYZ[i].steps);
+#ifdef PRINTcalcAllMovement
+                    printf("axis=%d , stepscaling[%d]=%g s.XYZ[axis].steps=%d\n", axis, i ,step_scaling[i] , s.XYZ[axis].steps);
 #endif
                     //Check for fastest possible acceleration over all axis
                     FLOAT_T scale_acc = s.XYZ[i].maxAcc /(s.XYZ[axis].acc/step_scaling[i]);
@@ -157,7 +189,7 @@ void calcAllMovement(struct moveGroup_t &s){
                     }
                 }
             }
-#ifdef PRINT
+#ifdef PRINTcalcAllMovement
             printf("acc_down = %g period_up = %g\n" , scaledown_acc , scaleup_period );
 #endif
                 if(scaledown_acc < 1){
@@ -187,7 +219,7 @@ void calcAllMovement(struct moveGroup_t &s){
                        }
                    }
 
-#ifdef PRINT
+#ifdef PRINTcalcAllMovement
                 int axis1=(axis+1)%3;
                    printf("axis = %d, new acc = %g\n" , axis , s.XYZ[axis1].sqrt_acc);
 #endif
@@ -195,7 +227,7 @@ void calcAllMovement(struct moveGroup_t &s){
                 for( int a=1; a<3; a++){
                     int i = (axis+a)%3;
                 FLOAT_T correction = s.XYZ[axis].time.total /s.XYZ[i].time.total;
-#ifdef PRINT
+#ifdef PRINTcalcAllMovement
                 printf("Correction = %g \n" , correction-1);
 #endif
                 s.XYZ[i].time.period *=correction;
@@ -209,9 +241,8 @@ void calcAllMovement(struct moveGroup_t &s){
     for(int i=0; i<3; i++){
         if(s.XYZ[i].steps !=0)
             calcFixedPoint(s.XYZ[i]);
-        s.XYZ[i].m.cmd = MOVE;
-#ifdef PRINT
-        printf("axis=%d , %u*2^%d , per=%u , t_tot_fixed=%llu \n" ,i ,s.XYZ[i].m.acc_inv , s.XYZ[i].m.acc_exp , (s.XYZ[i].m.period>>32) , s.XYZ[i].m.t_tot);
+#ifdef PRINTcalcAllMovement
+        printf("axis=%d , %u*2^%d , per=%u , t_tot_fixed=%llu \n\n" ,i ,s.XYZ[i].m.acc_inv , s.XYZ[i].m.acc_exp , (s.XYZ[i].m.period>>32) , s.XYZ[i].m.t_tot);
 #endif
     }
 }

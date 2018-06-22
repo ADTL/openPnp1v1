@@ -9,7 +9,7 @@
 #ifndef CALC_H_
 #define CALC_H_
 
-void calcHomeMovement(struct moveGroup_t &s);
+void calcHomeMovement(struct moveGroup_t &s  , int phase , enum OCaxes axes );
 void calcAccSteps(struct move_t &s ,  double &scale);
 void calcTimes(struct move_t &s , int update_period ,  double &scale);
 void calcFixedPoint(struct move_t &s);

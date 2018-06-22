@@ -24,6 +24,7 @@
     #define ROUND round
     #define ROUND2INT lround
     #define FREXP frexp
+    #define NAN nan
 #else
     #define FLOAT_T float
     #define SQRT sqrtf
@@ -31,6 +32,7 @@
     #define ROUND roundf
     #define ROUND2INT lroundf
     #define FREXP frexpf
+    #define NAN nanf
 #endif
 
 #define SQRT_TB_LEN 32768
@@ -65,14 +67,15 @@
 #define XYticks_per_mm ((200 *XY_STEPPING) / 90)
 #define Zticks_per_mm ((Z_STEPPING*200)/ 32)
 #define Cticks_per_deg ((C_STEPPING * 200)/360)
+#define secPerMin 60
 #define XLIM 620 //Soft lim in mm
 #define YLIM 440 //Soft lim
 #define ZLIM 33.5 //Soft lim
 #define Z_OFFSET_UM 3500 // DISTANCE FROM optical detection to mid
 
-enum CMD{HOME , MOVE , MOVE_LIM , ROTATE , OFFSET};
+enum CMD{HOME , MOVE , MOVE_LIM , ROTATE};
 enum {READY , DONE };
-enum OCaxes{X,Y,Z,C};
+enum OCaxes{X,Y,Z,C,ALL};
 enum OCpos{OCtop , OCbottom};
 enum OCpolarity{OCpos , OCneg};
 enum error_t{OK , STOP};
@@ -106,7 +109,6 @@ typedef struct{
     unsigned acc_inv;
     int acc_exp;
     unsigned dir;
-    unsigned cmd;
 }move_data_t;
 
 typedef struct{
@@ -115,13 +117,11 @@ typedef struct{
     FLOAT_T acceleration;
     FLOAT_T velocity;
     FLOAT_T total;
-    FLOAT_T HomeMinPeriod;
 }timeTypes_t;
 
 struct move_t{
     int steps;
     float pos;
-    float offset; // offset after home in mm
     move_data_t m;
     timeTypes_t time;
     FLOAT_T acc;
@@ -130,8 +130,15 @@ struct move_t{
     FLOAT_T sqrt_maxAcc;
     FLOAT_T HomeAcc;
     FLOAT_T sqrt_HomeAcc;
+    FLOAT_T StepsPerMm;
+    float HomeFeedrate;
+    float SlowHomeFeedrate;
+    float softlim_min;
+    float softlim_max;
     int moving;
+    float offset; // offset after home in mm
     int softlim;
+    char softlim_char;
 };
 
 struct moveC_t{
@@ -154,6 +161,7 @@ struct moveGroup_t{
     struct move_t XYZ[3];
     struct moveC_t C;
     double scale;
+    float feedrate;
 };
 
 
@@ -182,7 +190,7 @@ void supervisor(client spi_if spi, client interface error_if error_data , in por
 
 int simStepper(unsigned total_steps  , unsigned minPulseTime , unsigned acc);
 void init_sqrt_tbl(double &scale);
-{float , char} softlim(char *data , const float max , const float min , float &x);
+float softlim(char *data , struct move_t &s);
 
 void stepperthreads(client interface usb_cdc_interface cdc_data ,
              client pwm_if pwm, client spi_if spi_data[SPI_INTERFACES],

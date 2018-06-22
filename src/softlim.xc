@@ -6,21 +6,23 @@
  */
 
 #include <stdlib.h>
+#include "stepper_server.h"
 
-{float , char} softlim(char* data , const float max , const float min , float &x){
+float softlim(char* data , struct move_t &s){
     float new_x = atoff(data);
-    float dx = new_x-x;
-    if(x + dx > max){
-        dx = max - x;
-        x = max;
-        return {dx , '+'};
+    float dx = new_x- s.pos;
+    if(s.pos + dx > s.softlim_max){
+        dx = s.softlim_max - s.pos;
+        s.pos = s.softlim_max;
+        s.softlim_char = '+';
     }
-    else if(x + dx < min){
-        dx = min-x;
-        x = min;
-        return {dx , '-'};
+    else if(s.pos + dx < s.softlim_min){
+        dx = s.softlim_min-s.pos;
+        s.pos = s.softlim_min;
+        s.softlim_char = '-';
     }else{
-        x += dx;
-        return {dx , 0};
+        s.pos += dx;
+        s.softlim_char = 0;
     }
+    return dx;
 }

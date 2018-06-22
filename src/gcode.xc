@@ -96,58 +96,116 @@ void Move(streaming chanend c , struct move_t &s){
 
 
 void moveSteppers(streaming chanend c[] , struct moveGroup_t &s , clock clk){
-    for(int i=0 ; i<3 ; i++)
+    int HomeZ=0;
+    char token[3]={READY,READY,READY};
+
+    if(s.XYZ[Z].steps==0)
+        token[Z]=DONE;
+    else if((s.XYZ[Y].pos>=390) && (s.XYZ[Z].pos==0) && (s.XYZ[Z].steps>0)){
+        calcHomeMovement(s , 0 , Z);
+        soutct(c[Z] , HOME);
+        HomeZ=1;
+    }else
+       soutct(c[Z] , MOVE);
+
+    for(int i=X ; i<=Y ; i++)
         if(s.XYZ[i].steps!=0)
             soutct(c[i] , MOVE);
-    for(int i=0 ; i<3 ; i++)
+        else
+            token[i]=DONE;
+
+    for(int i=X ; i<=Z ; i++)
         if(s.XYZ[i].steps!=0)
             schkct(c[i] , READY);
     start_clock(clk);
-    for(int i=0 ; i<3 ; i++)
-        if(s.XYZ[i].steps!=0)
-            schkct(c[i] , DONE);
+
+    while(!((token[X]==DONE) && (token[Y]==DONE) && (token[Z]==DONE))){
+        select{
+        case sinct_byref(c[X] , token[X]):
+                                break;
+        case sinct_byref(c[Y] , token[Y]):
+                                break;
+        case sinct_byref(c[Z] , token[Z]):
+                            if(HomeZ){
+                                if(token[Z]==DONE){
+                                    HomeZ=0;
+                                    s.XYZ[Z].steps= ROUND2INT(s.XYZ[Z].offset*s.XYZ[Z].StepsPerMm);
+                                    calcAccSteps(s.XYZ[Z] , s.scale);
+                                    calcTimes(s.XYZ[Z] , 0 , s.scale);
+                                    calcFixedPoint(s.XYZ[Z]);
+                                    soutct(c[Z] , MOVE);
+                                    token[Z]=READY;
+                                }
+                            }
+        break;
+
+        }
+    }
+
     stop_clock(clk);
 }
 
 
-void home(streaming chanend c[4] , struct moveGroup_t &s , clock clk){
-    calcHomeMovement(s);
-    soutct(c[Z] , HOME);
-    schkct(c[Z] , READY);
+void home(streaming chanend c[4] , struct moveGroup_t &s , clock clk , enum OCaxes axes){
+    switch(axes){
+    case X|Y|Z:
+    calcHomeMovement(s , 0 , axes);
+    soutct(c[axes] , HOME);
+    schkct(c[axes] , READY);
     start_clock(clk);
-
-    while( sinct(c[Z]) != DONE);
-    soutct(c[Y] , HOME);
-
-    timer tmr; int t;
-    tmr :> t;
-    char Ytoken=0xFF;
-    int timeout=0;
-    while((Ytoken!= DONE) || timeout){
-        select{
-        case tmr when timerafter(t + 7e7):> void: //Delay X axis homing for up to 0.7s ...
-                timeout=1;
-                break;
-        case sinct_byref(c[Y] , Ytoken):         //if Y has not finished homing yet
-                break;
-        }
-    }
-    soutct(c[X] , HOME);
-    while( sinct(c[X]) != DONE);
-    while(Ytoken!= DONE){
-        sinct_byref(c[Y] , Ytoken);
-    }
-    stop_clock(clk);
-
-    for(int i=0; i<3 ;i++){
-        s.XYZ[i].pos=0;
-        s.XYZ[i].softlim=0;
-    }
-    s.XYZ[X].steps= ROUND2INT(s.XYZ[X].offset*(FLOAT_T)XYticks_per_mm);
-    s.XYZ[Y].steps= ROUND2INT(s.XYZ[Y].offset*(FLOAT_T)XYticks_per_mm);
-    s.XYZ[Z].steps = ROUND2INT(s.XYZ[Z].offset*(FLOAT_T)Zticks_per_mm);
+    while( sinct(c[axes]) != DONE);
+        stop_clock(clk);
+    s.XYZ[axes].pos=0;
+    s.XYZ[axes].softlim=0;
+    s.XYZ[axes].steps= ROUND2INT(s.XYZ[axes].offset*s.XYZ[axes].StepsPerMm);
+    s.XYZ[(axes+1)%3].steps=0;
+    s.XYZ[(axes+2)%3].steps=0;
     calcAllMovement(s);
     moveSteppers(c , s , clk);
+
+    break;
+    case ALL:
+        for(int phase=0; phase <2 ; phase++){
+            //Home Z
+            calcHomeMovement(s , phase , axes);
+            soutct(c[Z] , HOME);
+            schkct(c[Z] , READY);
+            start_clock(clk);
+            while( sinct(c[Z]) != DONE);
+
+            //HomeY
+            soutct(c[Y] , HOME);
+            timer tmr; int t;
+            tmr :> t;
+            unsigned char Ytoken=0xFF;
+            int timeout=0;
+            while(!((Ytoken== DONE) || timeout)){
+                select{
+                case tmr when timerafter(t + 7e7):> t: //Delay X axis homing for up to 0.7s ...
+                        timeout=1;
+                        break;
+                case sinct_byref(c[Y] , Ytoken):         //if Y has not finished homing yet
+                        break;
+                }
+            }
+            soutct(c[X] , HOME);
+            while( sinct(c[X]) != DONE);
+            while(Ytoken!= DONE){
+                sinct_byref(c[Y] , Ytoken);
+            }
+            stop_clock(clk);
+        }
+        s.feedrate = 600;
+        for(int i=0; i<3 ;i++){
+            s.XYZ[i].pos=0;
+            s.XYZ[i].softlim=0;
+            s.XYZ[i].steps= ROUND2INT(s.XYZ[i].offset*s.XYZ[i].StepsPerMm);
+        }
+
+        calcAllMovement(s);
+        moveSteppers(c , s , clk);
+        break;
+    }
 }
 
 
@@ -198,23 +256,40 @@ int ena=0;
 s.scale = ((double)INT32_MAX+1)/(sqrt(SQRT_TB_LEN));
 init_sqrt_tbl(s.scale);
 
-
-s.XYZ[X].maxAcc = 100; //Relative to ticks / s^2
+// X
+s.XYZ[X].maxAcc = 750; //Relative to ticks / s^2
 s.XYZ[X].time.minPeriod = PORT_CLK_FREQ_kHz / DM860_MAX_FREQ_kHz;
-s.XYZ[Y].maxAcc = 80;
+s.XYZ[X].StepsPerMm = XYticks_per_mm;
+s.XYZ[X].softlim_min = 0;
+s.XYZ[X].softlim_max = XLIM;
+// Y
+s.XYZ[Y].maxAcc = 250;
 s.XYZ[Y].time.minPeriod = PORT_CLK_FREQ_kHz / DM860_MAX_FREQ_kHz;
-s.XYZ[Z].maxAcc = 100;
+s.XYZ[Y].StepsPerMm = XYticks_per_mm;
+s.XYZ[Y].softlim_min = 0;
+s.XYZ[Y].softlim_max = YLIM;
+// Z
+s.XYZ[Z].maxAcc = 500;
 s.XYZ[Z].time.minPeriod = PORT_CLK_FREQ_kHz / AMIS_MAX_FREQ_kHz;
+s.XYZ[Z].StepsPerMm = Zticks_per_mm;
+s.XYZ[Z].softlim_min = -ZLIM;
+s.XYZ[Z].softlim_max = ZLIM;
+
 s.C.maxAcc =1;
 s.C.minPeriodTime = PORT_CLK_FREQ_kHz / AMIS_MAX_FREQ_kHz;
 
 s.C.activeStepper =0;
 
-for(int i=0;i<3;i++){
-    s.XYZ[i].HomeAcc = 10;
-    s.XYZ[i].time.HomeMinPeriod = 300000;
+for(int i=X; i<=Y; i++){
+    s.XYZ[i].HomeAcc = 3;
+    s.XYZ[i].HomeFeedrate = 500; //[mm/min]
+    s.XYZ[i].SlowHomeFeedrate = 30; //[mm/min]
     calcSquares(s.XYZ[i]);
 }
+s.XYZ[Z].HomeAcc = 100;
+s.XYZ[Z].HomeFeedrate = 10000; //[mm/min]
+s.XYZ[Z].SlowHomeFeedrate = 30; //[mm/min]
+calcSquares(s.XYZ[Z]);
 
 
 //#define TESTI
@@ -225,19 +300,17 @@ for(int i=0;i<3;i++){
 //s.XYZ[Z].steps=5000;
 
 spi.MotorEnable(1, spiZ);
-spi.MotorEnable(1, spiC0);
-spi.MotorEnable(1, spiC1);
+spi.MotorEnable(0, spiC0);
+spi.MotorEnable(0, spiC1);
 setEna(3 , ena , error , p_ena);
-wait(1e7);
+home(c , s , clk , ALL);
 
-home(c , s , clk);
-
-
+s.feedrate=80000;
 int dir=1;
-for(int i=0; i<1 ; i++){
-    s.XYZ[X].steps=50*XYticks_per_mm*dir;
-    s.XYZ[Y].steps=50*XYticks_per_mm*dir;
-    s.XYZ[Z].steps=25*Zticks_per_mm*dir;
+for(int i=0; i<6 ; i++){
+    s.XYZ[X].steps=50*s.XYZ[X].StepsPerMm*dir;
+    s.XYZ[Y].steps=50*s.XYZ[Y].StepsPerMm*dir;
+    s.XYZ[Z].steps=25*s.XYZ[Z].StepsPerMm*dir;
     dir *=-1;
     calcAllMovement(s);
     moveSteppers(c , s , clk);
@@ -339,41 +412,27 @@ while(1){
             case 'G':  //Gcode
                 switch(gcode){
                 case 0: //standard Gcode move
-                    float dx , dy , dz , f , t_minXY ,t_minZ;
+                     float t_minXY ,t_minZ;
+                     const char pos_char[]="XYZ";
 
-                    int xpos = safestrchr(data, 'X');
-                    int ypos = safestrchr(data, 'Y');
-                    int zpos = safestrchr(data, 'Z');
-                    int fpos = safestrchr(data, 'F');
                     int epos = safestrchr(data, 'A'); // A or E ??
+                    int fpos = safestrchr(data, 'F');
                     if(checkpos(fpos))
-                        f = atof(&data[fpos+1]); // feedrate mm/min
+                        s.feedrate = atoff(&data[fpos+1]); // feedrate mm/min
                     else
-                        f = 1000;
-                    t_minXY = t_kXY/f; // ticks per second
-                    t_minZ =  t_kZ/f;
-                    if(checkpos(xpos)){
-                        {dx , s.XYZ[X].softlim} =  softlim(&data[xpos+1] , XLIM , 0  , s.XYZ[X].pos);
-                        s.XYZ[X].steps = ROUND2INT(dx*XYticks_per_mm);
-                    }
-                    else{
-                        s.XYZ[X].steps=0;
-                        dx =0;
-                    }
-                    if(checkpos(ypos)){
-                        {dy , s.XYZ[Y].softlim} =  softlim(&data[ypos+1] , YLIM  , 0 , s.XYZ[Y].pos);
-                        s.XYZ[Y].steps = ROUND2INT(dy*XYticks_per_mm);
-                    }
-                    else{
-                        s.XYZ[Y].steps=0;
-                        dy=0;
-                    }
-                    if(checkpos(zpos)){
-                        {dz , s.XYZ[Z].softlim} =  softlim(&data[zpos+1] , ZLIM , -ZLIM , s.XYZ[Z].pos);
-                        s.XYZ[Z].steps = ROUND2INT(dz*Zticks_per_mm);
-                    }else{
-                        s.XYZ[Z].steps=0;
-                        dz=0;
+                        s.feedrate = 1000;
+
+                    for(int axis=X; axis<=Z; axis++){
+                        int pos = safestrchr(data, pos_char[axis]);
+                        if(checkpos(pos)){
+                            float ds;
+                            ds = softlim(&data[pos+1] , s.XYZ[axis]);
+                            s.XYZ[axis].steps = ROUND2INT(ds*s.XYZ[axis].StepsPerMm);
+                        }
+                        else{
+                            s.XYZ[axis].steps=0;
+                        }
+
                     }
 
 #ifdef NOOZLEAWARE
@@ -421,7 +480,7 @@ while(1){
                     cdc.write(ok_string, ok_len);
                     break;
                 case 28: // home all axes
-                    home(c , s , clk);
+                    home(c , s , clk , ALL);
                     cdc.write(ok_string, ok_len);
                     break;
                 case 90: //sSet absolute positioning mode;
@@ -539,18 +598,15 @@ while(1){
                     cdc.write(ok_string, ok_len);
                     break;
                 case 813: // set max accX
-                    float _;
                     setAcc(data , s.XYZ[X].maxAcc , s.XYZ[X].sqrt_maxAcc , s.XYZ[X].offset);
                     //printf("s.XYZ[X].maxAcc = %f ", s.XYZ[X].maxAcc );
                     cdc.write(ok_string, ok_len);
                     break;
                 case 814: // set max accY
-                    float _;
                     setAcc(data , s.XYZ[Y].maxAcc , s.XYZ[Y].sqrt_maxAcc, s.XYZ[Y].offset);
                     cdc.write(ok_string, ok_len);
                     break;
                 case 815: // set max accZ
-                    float offset;
                     setAcc(data , s.XYZ[Z].maxAcc , s.XYZ[Z].sqrt_maxAcc, s.XYZ[Z].offset);
                     cdc.write(ok_string, ok_len);
                     break;

@@ -2,10 +2,10 @@ function [t1 t2]=simSteppers()
 port_clock = 5e8;
 LEN=2^15;
 scale = double(int32(inf)+1)/sqrt(LEN);
-acc=707; % kvadrat
+acc=800; % kvadrat
 ticks_mm=12800/90;
-steps1 = round(ticks_mm * 200)
-steps2 = round(ticks_mm *150) %Must be less than steps1 NOT SORTED
+steps1 = round(ticks_mm * 100)
+steps2 = round(ticks_mm * 10) %Must be less than steps1 NOT SORTED
 f = steps1/steps2;
 period = port_clock/2e5;
 
@@ -16,8 +16,8 @@ period = port_clock/2e5;
 period = period*f;
 acc=acc/f;
 
-if(acc > 500)
-    scaledown = acc/500
+if(acc > 250)
+    scaledown = acc/250
 end
 
 [acc_steps , v_steps , period] = calcMovement( steps2, period , LEN , acc , port_clock);
@@ -38,6 +38,7 @@ subplot(2,1,1), plot( t1  , (1:steps1)/ticks_mm , '*-' ,...
                       t2  , (1:steps2)/ticks_mm , '*-' );
 grid on
 xlabel('Time [s]');
+ylabel('Distance [mm]');
 sc=ticks_mm*1000*port_clock;
 subplot(2,1,2), plot( tv1  , v1/sc , '*-' ,...
                       tv2  , v2/sc , '*-' ,...

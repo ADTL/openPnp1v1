@@ -140,8 +140,8 @@ unsafe void stepper_server(move_data_t * unsafe data, streaming chanend c , step
 #endif
                   spi.setCurrent(CURRENT_Z , spiZ);
                   moveStepper(c , p.step , 1 , data , minPulseTime);
-                  soutct(c , 0);
                   spi.setCurrent(CURRENT_Z>>1 , spiZ);
+                  soutct(c , 0);
                   break;
               default:
                   break;
@@ -168,18 +168,6 @@ unsafe void stepper_server(move_data_t * unsafe data, streaming chanend c , step
               }
               soutct(c , DONE);
               break;
-          case OFFSET:
-              int offset;
-              c:> offset;
-              if(offset<0){
-                  offset_dir=0;
-                  offset_steps = -offset;
-              }else{
-                  offset_dir=1;
-                  offset_steps = offset;
-              }
-              break;
-              soutct(c , DONE);
           default:
               break;
          }
