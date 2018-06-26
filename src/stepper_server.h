@@ -16,6 +16,7 @@
 #include <math.h>
 
 #define USE_DOUBLE
+//#define DEBUG_TIME
 
 #ifdef USE_DOUBLE
     #define FLOAT_T double
@@ -25,6 +26,7 @@
     #define ROUND2INT lround
     #define FREXP frexp
     #define NAN nan
+    #define LDEXP ldexp
 #else
     #define FLOAT_T float
     #define SQRT sqrtf
@@ -33,6 +35,7 @@
     #define ROUND2INT lroundf
     #define FREXP frexpf
     #define NAN nanf
+#define LDEXP ldexpf
 #endif
 
 #define SQRT_TB_LEN 32768
@@ -108,8 +111,39 @@ typedef struct{
     unsigned v_steps;
     unsigned acc_inv;
     int acc_exp;
+    unsigned v_wrap;
     unsigned dir;
+    unsigned axis;
+//  unsigned _padding;
+#ifdef DEBUG_TIME
+    unsigned long long t1;
+    unsigned long long t2;
+    unsigned long long t3;
+#endif
 }move_data_t;
+
+struct tone_t{
+    float t;
+    char len;
+    char dir;
+    char axis;
+};
+
+
+struct keys_t{
+    float C;
+    float Db;
+    float D;
+    float Eb;
+    float E;
+    float F;
+    float Gb;
+    float G;
+    float Ab;
+    float A;
+    float Bb;
+    float B;
+};
 
 typedef struct{
     FLOAT_T period;

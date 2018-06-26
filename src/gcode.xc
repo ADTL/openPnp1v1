@@ -15,6 +15,7 @@
 #include "i2c.h"
 #include "pwm.h"
 #include "calc.h"
+#include "assert.h"
 
 unsigned char error_string[]="error:";
 unsigned error_len = sizeof(error_string);
@@ -101,18 +102,21 @@ void moveSteppers(streaming chanend c[] , struct moveGroup_t &s , clock clk){
 
     if(s.XYZ[Z].steps==0)
         token[Z]=DONE;
-    else if((s.XYZ[Y].pos>=390) && (s.XYZ[Z].pos==0) && (s.XYZ[Z].steps>0)){
-        calcHomeMovement(s , 0 , Z);
-        soutct(c[Z] , HOME);
-        HomeZ=1;
-    }else
-       soutct(c[Z] , MOVE);
+    else{
+        if((s.XYZ[Y].pos>=390) && (s.XYZ[Z].pos==100) && (s.XYZ[Z].steps>0)){
+            calcHomeMovement(s , 0 , Z);
+            soutct(c[Z] , HOME);
+            HomeZ=1;
+        }else
+            soutct(c[Z] , MOVE);
+    }
 
-    for(int i=X ; i<=Y ; i++)
+    for(int i=X ; i<=Y ; i++){
         if(s.XYZ[i].steps!=0)
             soutct(c[i] , MOVE);
         else
             token[i]=DONE;
+    }
 
     for(int i=X ; i<=Z ; i++)
         if(s.XYZ[i].steps!=0)
@@ -126,17 +130,17 @@ void moveSteppers(streaming chanend c[] , struct moveGroup_t &s , clock clk){
         case sinct_byref(c[Y] , token[Y]):
                                 break;
         case sinct_byref(c[Z] , token[Z]):
-                            if(HomeZ){
-                                if(token[Z]==DONE){
-                                    HomeZ=0;
-                                    s.XYZ[Z].steps= ROUND2INT(s.XYZ[Z].offset*s.XYZ[Z].StepsPerMm);
-                                    calcAccSteps(s.XYZ[Z] , s.scale);
-                                    calcTimes(s.XYZ[Z] , 0 , s.scale);
-                                    calcFixedPoint(s.XYZ[Z]);
-                                    soutct(c[Z] , MOVE);
-                                    token[Z]=READY;
-                                }
-                            }
+            if(HomeZ){
+                if(token[Z]==DONE){
+                    HomeZ=0;
+                    s.XYZ[Z].steps= ROUND2INT(s.XYZ[Z].offset*s.XYZ[Z].StepsPerMm);
+                    calcAccSteps(s.XYZ[Z] , s.scale);
+                    calcTimes(s.XYZ[Z] , s.scale);
+                    calcFixedPoint(s.XYZ[Z]);
+                    soutct(c[Z] , MOVE);
+                    token[Z]=READY;
+                }
+            }
         break;
 
         }
@@ -296,6 +300,57 @@ calcSquares(s.XYZ[Z]);
 //For testing with DSO
 #ifdef TESTI
 
+struct keys_t k;
+
+for(int i=0 ;i<12; i++)
+    (k , float[])[i]=4000*pow(2, (FLOAT_T)i/12);
+
+struct tone_t melody[]={{k.C ,1,1,Y } ,
+                        {k.C ,1,1,Y } ,
+                        {k.C ,1,1,Y } ,
+                        {k.E ,1,1,Y } ,
+                        {k.D ,1,0,Y  } ,
+                        {k.D ,1,0,Y  } ,
+                        {k.D ,1,0,Y  } ,
+                        {k.F ,1,0,Y  } ,
+                        {k.E ,1,1,Y  } ,
+                        {k.E ,1,1,Y  } ,
+                        {k.D ,1,1,Y  } ,
+                        {k.D ,1,1,Y  } ,
+                        {k.C ,4,0,Y  } ,
+
+                        {k.E ,1,1,X } ,
+                        {k.E ,1,1,X } ,
+                        {k.E ,1,1,X } ,
+                        {k.E ,1,1,X  } ,
+                        {k.G ,2,0,X  } ,
+                        {k.F ,2,0,X  } ,
+                        {k.D ,1,1,X  } ,
+                        {k.D ,1,1,X  } ,
+                        {k.D ,1,1,X  } ,
+                        {k.D ,1,1,X  } ,
+                        {k.F ,2,0,X  } ,
+                        {k.E ,2,0,X  } ,
+
+                        {k.C ,1,1,3 } ,
+                        {k.C ,1,1,3 } ,
+                        {k.C ,1,1,3 } ,
+                        {k.E ,1,1,3 } ,
+                        {k.D ,1,0,3  } ,
+                        {k.D ,1,0,3  } ,
+                        {k.D ,1,0,3  } ,
+                        {k.F ,1,0,3  } ,
+                        {k.E ,1,1,3  } ,
+                        {k.E ,1,1,3  } ,
+                        {k.D ,1,1,3  } ,
+                        {k.D ,1,1,3  } ,
+                        {k.C ,4,0,3  } ,
+
+
+};
+
+
+
 //s.XYZ[Y].steps=15000;
 //s.XYZ[Z].steps=5000;
 
@@ -305,20 +360,59 @@ spi.MotorEnable(0, spiC1);
 setEna(3 , ena , error , p_ena);
 home(c , s , clk , ALL);
 
+s.XYZ[X].steps=75*s.XYZ[X].StepsPerMm;
+s.XYZ[Y].steps=50*s.XYZ[Y].StepsPerMm;
 s.feedrate=80000;
-int dir=1;
-for(int i=0; i<6 ; i++){
-    s.XYZ[X].steps=50*s.XYZ[X].StepsPerMm*dir;
-    s.XYZ[Y].steps=50*s.XYZ[Y].StepsPerMm*dir;
-    s.XYZ[Z].steps=25*s.XYZ[Z].StepsPerMm*dir;
-    dir *=-1;
+calcAllMovement(s);
+moveSteppers(c , s , clk);
+wait(2e8);
+int dir;
+for(int i=0; i<sizeof(melody)/sizeof(struct tone_t); i++){
+    //printint(feedrate);
+    dir = melody[i].dir ? 1 : -1;
+
+    s.XYZ[X].steps=0;
+    s.XYZ[Y].steps=0;
+    s.XYZ[Z].steps=0;
+
+    if(melody[i].axis==3){
+
+        s.XYZ[Y].steps=round(35*s.XYZ[X].StepsPerMm*dir*melody[i].len*melody[i].t/k.C);
+        s.XYZ[X].steps=s.XYZ[Y].steps*2;
+        s.feedrate=melody[i].t*SQRT(5);
+    }
+    else{
+        s.XYZ[melody[i].axis].steps=35*s.XYZ[X].StepsPerMm*dir*melody[i].len*melody[i].t/k.C;
+        s.feedrate=melody[i].t;
+    }
+    timer tmr;
+    int t1,t2;
+    tmr :> t1;
     calcAllMovement(s);
+    tmr :> t2;
+    assert(t2-t1 < 100000);
+//    printintln((t2-t1)/100000);
+//    for(int i=0; i<3; i++)
+//        waitForCompletion( c[i] , s.XYZ[i]);
+    tmr :> t1;
     moveSteppers(c , s , clk);
+    tmr :> t2;
+  //  printf(" %ums %gs\n" , (t2-t1)/100000 , sqrt(20000)/s.feedrate *60 ); //mm/min
+    //printstr("Finished");
+/*
+    for(int i=X ; i<= Y ; i++){
+        printullongln( (s.XYZ[i].m.t1 ,  unsigned[])[1]);
+        printullongln( (s.XYZ[i].m.t2 ,  unsigned[])[1] - (s.XYZ[i].m.t1 ,  unsigned[])[1]);
+        printullongln( (s.XYZ[i].m.t3 ,  unsigned[])[1] - (s.XYZ[i].m.t2 ,  unsigned[])[1]);
+        printullongln( (s.XYZ[i].m.period ,  unsigned[])[1]);
+    }
+*/
 }
 setEna(0 , ena , error , p_ena);
 spi.MotorEnable(0, spiZ);
 spi.MotorEnable(0, spiC0);
 spi.MotorEnable(0, spiC1);
+printstr("DONE");
 while(1);
 #endif
 
@@ -417,9 +511,11 @@ while(1){
 
                     int epos = safestrchr(data, 'A'); // A or E ??
                     int fpos = safestrchr(data, 'F');
-                    if(checkpos(fpos))
+                    if(checkpos(fpos)){
                         s.feedrate = atoff(&data[fpos+1]); // feedrate mm/min
-                    else
+                        if(s.feedrate<60)
+                            s.feedrate=60;
+                    }else
                         s.feedrate = 1000;
 
                     for(int axis=X; axis<=Z; axis++){

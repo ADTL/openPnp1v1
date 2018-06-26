@@ -26,6 +26,8 @@ void stepperthreads(client interface usb_cdc_interface cdc_data ,
     configure_out_port_no_ready(p.C0.step , p.clk , 0);
     configure_out_port_no_ready(p.C1.step , p.clk , 0);
     struct moveGroup_t s={0};
+    for(int axis=X; axis>=Z ; axis++)
+        s.XYZ[axis].m.axis=axis;
     unsafe{
         move_data_t * unsafe x_ptr = &s.XYZ[X].m;
         move_data_t * unsafe y_ptr = &s.XYZ[Y].m;

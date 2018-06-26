@@ -106,7 +106,7 @@ unsafe void stepper_server(move_data_t * unsafe data, streaming chanend c , step
                       spi.setCurrent(CURRENT_Z>>1 , spiZ);
                       break;
                   }
-                  soutct(c , DONE);
+
                   break;
               case MOVE_LIM:
                if( data->dir)
